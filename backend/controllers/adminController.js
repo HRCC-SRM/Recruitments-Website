@@ -2,34 +2,33 @@ import Admin from "../models/Admin.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-// Hardcoded admin accounts
 const HARDCODED_ADMINS = [
   {
-    username: "superadmin",
+    usernameEnv: "ADMIN_SUPERADMIN_USERNAME",
     email: "superadmin@hrcc.com",
-    password: "admin123",
+    passwordEnv: "ADMIN_SUPERADMIN_PASSWORD",
     role: "super_admin",
     domain: null,
   },
   {
-    username: "creative_lead",
-    email: "creative@hrcc.com", 
-    password: "creative123",
+    usernameEnv: "ADMIN_CREATIVE_LEAD_USERNAME",
+    email: "creative@hrcc.com",
+    passwordEnv: "ADMIN_CREATIVE_LEAD_PASSWORD",
     role: "creative_lead",
     domain: "creative",
   },
   {
-    username: "corporate_lead",
+    usernameEnv: "ADMIN_CORPORATE_LEAD_USERNAME",
     email: "corporate@hrcc.com",
-    password: "corporate123", 
+    passwordEnv: "ADMIN_CORPORATE_LEAD_PASSWORD",
     role: "corporate_lead",
     domain: "corporate",
   },
   {
-    username: "technical_lead",
+    usernameEnv: "ADMIN_TECHNICAL_LEAD_USERNAME",
     email: "technical@hrcc.com",
-    password: "technical123",
-    role: "technical_lead", 
+    passwordEnv: "ADMIN_TECHNICAL_LEAD_PASSWORD",
+    role: "technical_lead",
     domain: "technical",
   },
 ];
@@ -38,27 +37,38 @@ const HARDCODED_ADMINS = [
 const initializeAdmins = async () => {
   try {
     for (const adminData of HARDCODED_ADMINS) {
+      const envUsername = process.env[adminData.usernameEnv];
+      const plainPassword = process.env[adminData.passwordEnv];
+      const email = adminData.email;
+
+      if (!envUsername || !plainPassword) {
+        console.warn(
+          `Skipping creation of admin for role '${adminData.role}' because one or more env vars (${adminData.usernameEnv}, ${adminData.passwordEnv}) are not set.`
+        );
+        continue;
+      }
+
       // Check if admin already exists
       const existingAdmin = await Admin.findOne({
-        $or: [{ username: adminData.username }, { email: adminData.email }],
+        $or: [{ username: envUsername }, { email }],
       });
 
       if (!existingAdmin) {
         // Hash password
         const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(adminData.password, saltRounds);
+        const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
 
         // Create admin
         await Admin.create({
-          username: adminData.username,
-          email: adminData.email,
+          username: envUsername,
+          email,
           password: hashedPassword,
           role: adminData.role,
           domain: adminData.domain,
           isActive: true,
         });
 
-        console.log(`✅ Created admin: ${adminData.username} (${adminData.role})`);
+        console.log(`✅ Created admin for role: ${adminData.role}`);
       }
     }
   } catch (error) {
@@ -88,54 +98,61 @@ export const adminLogin = async (req, res) => {
       return res.status(400).json({ message: "Username and password are required" });
     }
 
-    // Check hardcoded admins first
-    const hardcodedAdmin = HARDCODED_ADMINS.find(
-      admin => admin.username === username || admin.email === username
-    );
+    // Check hardcoded admins first (usernames/passwords via env, emails hardcoded)
+    const matchedAdminConfig = HARDCODED_ADMINS.find((config) => {
+      const envUsername = process.env[config.usernameEnv];
+      return username === envUsername || username === config.email;
+    });
 
-    if (hardcodedAdmin && hardcodedAdmin.password === password) {
-      // Find or create the admin in database
-      let admin = await Admin.findOne({
-        $or: [{ username: hardcodedAdmin.username }, { email: hardcodedAdmin.email }],
-      });
+    if (matchedAdminConfig) {
+      const envUsername = process.env[matchedAdminConfig.usernameEnv];
+      const email = matchedAdminConfig.email;
+      const expectedPassword = process.env[matchedAdminConfig.passwordEnv];
 
-      if (!admin) {
-        // Create admin if not exists
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(hardcodedAdmin.password, saltRounds);
-        
-        admin = await Admin.create({
-          username: hardcodedAdmin.username,
-          email: hardcodedAdmin.email,
-          password: hashedPassword,
-          role: hardcodedAdmin.role,
-          domain: hardcodedAdmin.domain,
-          isActive: true,
+      if (expectedPassword && expectedPassword === password) {
+        // Find or create the admin in database
+        let admin = await Admin.findOne({
+          $or: [{ username: envUsername }, { email }],
+        });
+
+        if (!admin) {
+          // Create admin if not exists
+          const saltRounds = 10;
+          const hashedPassword = await bcrypt.hash(expectedPassword, saltRounds);
+          
+          admin = await Admin.create({
+            username: envUsername,
+            email,
+            password: hashedPassword,
+            role: matchedAdminConfig.role,
+            domain: matchedAdminConfig.domain,
+            isActive: true,
+          });
+        }
+
+        // Update last login
+        admin.lastLogin = new Date();
+        await admin.save();
+
+        // Generate token
+        const token = generateToken(admin._id, admin.role, admin.domain);
+
+        // Return admin data (without password)
+        const adminData = {
+          id: admin._id,
+          username: admin.username,
+          email: admin.email,
+          role: admin.role,
+          domain: admin.domain,
+          lastLogin: admin.lastLogin,
+        };
+
+        return res.status(200).json({
+          message: "Login successful",
+          token,
+          admin: adminData,
         });
       }
-
-      // Update last login
-      admin.lastLogin = new Date();
-      await admin.save();
-
-      // Generate token
-      const token = generateToken(admin._id, admin.role, admin.domain);
-
-      // Return admin data (without password)
-      const adminData = {
-        id: admin._id,
-        username: admin.username,
-        email: admin.email,
-        role: admin.role,
-        domain: admin.domain,
-        lastLogin: admin.lastLogin,
-      };
-
-      return res.status(200).json({
-        message: "Login successful",
-        token,
-        admin: adminData,
-      });
     }
 
     // Fallback to database lookup for other admins
