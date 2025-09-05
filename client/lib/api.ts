@@ -10,12 +10,14 @@ export interface User {
   srmEmail: string;
   regNo: string;
   branch: string;
+  department: string;
   yearOfStudy: number;
   domain: string;
   linkedinLink?: string;
-  status?: 'active' | 'shortlisted' | 'rejected' | 'omitted';
+  status?: 'active' | 'shortlisted' | 'rejected' | 'holded' | 'omitted';
   createdAt?: string;
   updatedAt?: string;
+  responses?: Record<string, string>;
 }
 
 export interface Admin {
@@ -45,9 +47,11 @@ export interface RegisterRequest {
   srmEmail: string;
   regNo: string;
   branch: string;
+  department: string;
   yearOfStudy: number;
   domain: string;
   linkedinLink?: string;
+  responses?: Record<string, string>;
 }
 
 export interface RegisterResponse {
@@ -96,14 +100,55 @@ export interface TaskRequest {
 }
 
 export interface StatusUpdateRequest {
-  status: 'active' | 'shortlisted' | 'rejected' | 'omitted';
+  status: 'active' | 'shortlisted' | 'rejected' | 'holded' | 'omitted';
   notes?: string;
 }
 
 export interface BulkStatusUpdateRequest {
   userIds: string[];
-  status: 'active' | 'shortlisted' | 'rejected' | 'omitted';
+  status: 'active' | 'shortlisted' | 'rejected' | 'holded' | 'omitted';
   notes?: string;
+}
+
+export interface ApiError {
+  message: string;
+  status?: number;
+}
+
+export interface RawUserData {
+  _id?: string;
+  id?: string;
+  name: string;
+  email: string;
+  phone: string;
+  srmEmail: string;
+  regNo: string;
+  branch: string;
+  department: string;
+  yearOfStudy: number;
+  domain: string;
+  linkedinLink?: string;
+  status?: 'active' | 'shortlisted' | 'rejected' | 'holded' | 'omitted';
+  createdAt?: string;
+  updatedAt?: string;
+  responses?: Record<string, string> | Map<string, string>;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  assignedUsers: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmailDetails {
+  subject: string;
+  message: string;
+  recipients: string[];
+  sentAt: string;
 }
 
 // API Client Class
@@ -117,6 +162,42 @@ class ApiClient {
     if (typeof window !== 'undefined') {
       this.token = localStorage.getItem('admin_token');
     }
+  }
+
+  // Normalize backend user object (which uses _id) into frontend User type
+  private normalizeUser(raw: RawUserData): User {
+    if (!raw) return raw as unknown as User;
+    const responses: Record<string, string> | undefined = (() => {
+      const r = raw.responses;
+      if (!r) return undefined;
+      // Mongoose Map may show as object; convert Maps to plain object
+      if (typeof (r as unknown as { toObject?: () => Record<string, string> }).toObject === 'function') {
+        return (r as unknown as { toObject: () => Record<string, string> }).toObject();
+      }
+      if (r instanceof Map) {
+        const obj: Record<string, string> = {};
+        r.forEach((v: string, k: string) => { obj[k] = String(v); });
+        return obj;
+      }
+      return r as Record<string, string>;
+    })();
+    return {
+      id: String(raw.id ?? raw._id ?? ""),
+      name: raw.name,
+      email: raw.email,
+      phone: raw.phone,
+      srmEmail: raw.srmEmail,
+      regNo: raw.regNo,
+      branch: raw.branch,
+      department: raw.department,
+      yearOfStudy: raw.yearOfStudy,
+      domain: raw.domain,
+      linkedinLink: raw.linkedinLink,
+      status: raw.status,
+      createdAt: raw.createdAt,
+      updatedAt: raw.updatedAt,
+      ...(responses ? { responses } : {}),
+    };
   }
 
   private async request<T>(
@@ -138,8 +219,23 @@ class ApiClient {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          // If JSON parsing fails, try to get text response
+          try {
+            const errorText = await response.text();
+            errorMessage = errorText || errorMessage;
+          } catch (textError) {
+            // Keep the default error message if both JSON and text parsing fail
+            console.warn('Failed to parse error response:', parseError, textError);
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       return await response.json();
@@ -208,7 +304,11 @@ class ApiClient {
     if (params?.search) searchParams.append('search', params.search);
     
     const query = searchParams.toString();
-    return this.request<PaginatedResponse<User>>(`/technical-dashboard/users${query ? `?${query}` : ''}`);
+    const res = await this.request<PaginatedResponse<RawUserData>>(`/technical-dashboard/users${query ? `?${query}` : ''}`);
+    return {
+      ...res,
+      users: (res.users || []).map((u: RawUserData) => this.normalizeUser(u)),
+    } as PaginatedResponse<User>;
   }
 
   async getTechnicalStats(): Promise<{ message: string; stats: DashboardStats }> {
@@ -216,14 +316,16 @@ class ApiClient {
   }
 
   async getTechnicalUser(userId: string): Promise<{ message: string; user: User }> {
-    return this.request<{ message: string; user: User }>(`/technical-dashboard/users/${userId}`);
+    const res = await this.request<{ message: string; user: RawUserData }>(`/technical-dashboard/users/${userId}`);
+    return { message: res.message, user: this.normalizeUser(res.user) };
   }
 
   async updateTechnicalUserStatus(userId: string, statusData: StatusUpdateRequest): Promise<{ message: string; user: User }> {
-    return this.request<{ message: string; user: User }>(`/technical-dashboard/users/${userId}/status`, {
+    const res = await this.request<{ message: string; user: RawUserData }>(`/technical-dashboard/users/${userId}/status`, {
       method: 'PATCH',
       body: JSON.stringify(statusData),
     });
+    return { message: res.message, user: this.normalizeUser(res.user) };
   }
 
   async bulkUpdateTechnicalUserStatus(statusData: BulkStatusUpdateRequest): Promise<{ message: string; updatedCount: number; matchedCount: number }> {
@@ -233,8 +335,8 @@ class ApiClient {
     });
   }
 
-  async sendTaskToTechnicalUsers(taskData: TaskRequest): Promise<{ message: string; task: any; assignedUsers: User[] }> {
-    return this.request<{ message: string; task: any; assignedUsers: User[] }>('/technical-dashboard/tasks/send', {
+  async sendTaskToTechnicalUsers(taskData: TaskRequest): Promise<{ message: string; task: Task; assignedUsers: User[] }> {
+    return this.request<{ message: string; task: Task; assignedUsers: User[] }>('/technical-dashboard/tasks/send', {
       method: 'POST',
       body: JSON.stringify(taskData),
     });
@@ -254,8 +356,8 @@ class ApiClient {
     return this.request<PaginatedResponse<User>>(`/technical-dashboard/shortlisted${query ? `?${query}` : ''}`);
   }
 
-  async sendTaskToShortlistedTechnicalUsers(taskData: TaskRequest): Promise<{ message: string; task: any; emailDetails: any; assignedUsers: User[] }> {
-    return this.request<{ message: string; task: any; emailDetails: any; assignedUsers: User[] }>('/technical-dashboard/tasks/send-to-shortlisted', {
+  async sendTaskToShortlistedTechnicalUsers(taskData: TaskRequest): Promise<{ message: string; task: Task; emailDetails: EmailDetails; assignedUsers: User[] }> {
+    return this.request<{ message: string; task: Task; emailDetails: EmailDetails; assignedUsers: User[] }>('/technical-dashboard/tasks/send-to-shortlisted', {
       method: 'POST',
       body: JSON.stringify(taskData),
     });
@@ -275,7 +377,11 @@ class ApiClient {
     if (params?.search) searchParams.append('search', params.search);
     
     const query = searchParams.toString();
-    return this.request<PaginatedResponse<User>>(`/creative-dashboard/users${query ? `?${query}` : ''}`);
+    const res = await this.request<PaginatedResponse<RawUserData>>(`/creative-dashboard/users${query ? `?${query}` : ''}`);
+    return {
+      ...res,
+      users: (res.users || []).map((u: RawUserData) => this.normalizeUser(u)),
+    } as PaginatedResponse<User>;
   }
 
   async getCreativeStats(): Promise<{ message: string; stats: DashboardStats }> {
@@ -283,14 +389,16 @@ class ApiClient {
   }
 
   async getCreativeUser(userId: string): Promise<{ message: string; user: User }> {
-    return this.request<{ message: string; user: User }>(`/creative-dashboard/users/${userId}`);
+    const res = await this.request<{ message: string; user: RawUserData }>(`/creative-dashboard/users/${userId}`);
+    return { message: res.message, user: this.normalizeUser(res.user) };
   }
 
   async updateCreativeUserStatus(userId: string, statusData: StatusUpdateRequest): Promise<{ message: string; user: User }> {
-    return this.request<{ message: string; user: User }>(`/creative-dashboard/users/${userId}/status`, {
+    const res = await this.request<{ message: string; user: RawUserData }>(`/creative-dashboard/users/${userId}/status`, {
       method: 'PATCH',
       body: JSON.stringify(statusData),
     });
+    return { message: res.message, user: this.normalizeUser(res.user) };
   }
 
   async bulkUpdateCreativeUserStatus(statusData: BulkStatusUpdateRequest): Promise<{ message: string; updatedCount: number; matchedCount: number }> {
@@ -300,8 +408,8 @@ class ApiClient {
     });
   }
 
-  async sendTaskToCreativeUsers(taskData: TaskRequest): Promise<{ message: string; task: any; assignedUsers: User[] }> {
-    return this.request<{ message: string; task: any; assignedUsers: User[] }>('/creative-dashboard/tasks/send', {
+  async sendTaskToCreativeUsers(taskData: TaskRequest): Promise<{ message: string; task: Task; assignedUsers: User[] }> {
+    return this.request<{ message: string; task: Task; assignedUsers: User[] }>('/creative-dashboard/tasks/send', {
       method: 'POST',
       body: JSON.stringify(taskData),
     });
@@ -321,8 +429,8 @@ class ApiClient {
     return this.request<PaginatedResponse<User>>(`/creative-dashboard/shortlisted${query ? `?${query}` : ''}`);
   }
 
-  async sendTaskToShortlistedCreativeUsers(taskData: TaskRequest): Promise<{ message: string; task: any; emailDetails: any; assignedUsers: User[] }> {
-    return this.request<{ message: string; task: any; emailDetails: any; assignedUsers: User[] }>('/creative-dashboard/tasks/send-to-shortlisted', {
+  async sendTaskToShortlistedCreativeUsers(taskData: TaskRequest): Promise<{ message: string; task: Task; emailDetails: EmailDetails; assignedUsers: User[] }> {
+    return this.request<{ message: string; task: Task; emailDetails: EmailDetails; assignedUsers: User[] }>('/creative-dashboard/tasks/send-to-shortlisted', {
       method: 'POST',
       body: JSON.stringify(taskData),
     });
@@ -342,7 +450,11 @@ class ApiClient {
     if (params?.search) searchParams.append('search', params.search);
     
     const query = searchParams.toString();
-    return this.request<PaginatedResponse<User>>(`/corporate-dashboard/users${query ? `?${query}` : ''}`);
+    const res = await this.request<PaginatedResponse<RawUserData>>(`/corporate-dashboard/users${query ? `?${query}` : ''}`);
+    return {
+      ...res,
+      users: (res.users || []).map((u: RawUserData) => this.normalizeUser(u)),
+    } as PaginatedResponse<User>;
   }
 
   async getCorporateStats(): Promise<{ message: string; stats: DashboardStats }> {
@@ -350,14 +462,16 @@ class ApiClient {
   }
 
   async getCorporateUser(userId: string): Promise<{ message: string; user: User }> {
-    return this.request<{ message: string; user: User }>(`/corporate-dashboard/users/${userId}`);
+    const res = await this.request<{ message: string; user: RawUserData }>(`/corporate-dashboard/users/${userId}`);
+    return { message: res.message, user: this.normalizeUser(res.user) };
   }
 
   async updateCorporateUserStatus(userId: string, statusData: StatusUpdateRequest): Promise<{ message: string; user: User }> {
-    return this.request<{ message: string; user: User }>(`/corporate-dashboard/users/${userId}/status`, {
+    const res = await this.request<{ message: string; user: RawUserData }>(`/corporate-dashboard/users/${userId}/status`, {
       method: 'PATCH',
       body: JSON.stringify(statusData),
     });
+    return { message: res.message, user: this.normalizeUser(res.user) };
   }
 
   async bulkUpdateCorporateUserStatus(statusData: BulkStatusUpdateRequest): Promise<{ message: string; updatedCount: number; matchedCount: number }> {
@@ -367,8 +481,8 @@ class ApiClient {
     });
   }
 
-  async sendTaskToCorporateUsers(taskData: TaskRequest): Promise<{ message: string; task: any; assignedUsers: User[] }> {
-    return this.request<{ message: string; task: any; assignedUsers: User[] }>('/corporate-dashboard/tasks/send', {
+  async sendTaskToCorporateUsers(taskData: TaskRequest): Promise<{ message: string; task: Task; assignedUsers: User[] }> {
+    return this.request<{ message: string; task: Task; assignedUsers: User[] }>('/corporate-dashboard/tasks/send', {
       method: 'POST',
       body: JSON.stringify(taskData),
     });
@@ -388,8 +502,8 @@ class ApiClient {
     return this.request<PaginatedResponse<User>>(`/corporate-dashboard/shortlisted${query ? `?${query}` : ''}`);
   }
 
-  async sendTaskToShortlistedCorporateUsers(taskData: TaskRequest): Promise<{ message: string; task: any; emailDetails: any; assignedUsers: User[] }> {
-    return this.request<{ message: string; task: any; emailDetails: any; assignedUsers: User[] }>('/corporate-dashboard/tasks/send-to-shortlisted', {
+  async sendTaskToShortlistedCorporateUsers(taskData: TaskRequest): Promise<{ message: string; task: Task; emailDetails: EmailDetails; assignedUsers: User[] }> {
+    return this.request<{ message: string; task: Task; emailDetails: EmailDetails; assignedUsers: User[] }>('/corporate-dashboard/tasks/send-to-shortlisted', {
       method: 'POST',
       body: JSON.stringify(taskData),
     });

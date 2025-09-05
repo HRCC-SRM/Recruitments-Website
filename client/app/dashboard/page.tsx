@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 
 // Import the actual dashboard components
 import TechnicalAdminDashboard from './technical/page';
@@ -106,7 +105,7 @@ export default function DashboardPage() {
             <div className="text-center">
               <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
               <p className="text-muted-foreground mb-4">
-                You don't have permission to access this dashboard.
+                You don&apos;t have permission to access this dashboard.
               </p>
               <Button onClick={handleLogout} variant="outline">
                 Logout

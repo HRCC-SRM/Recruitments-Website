@@ -33,11 +33,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  department: {
+    type: String,
+    required: true,
+  },
   yearOfStudy: {
     type: Number,
     required: true,
     min: 1,
-    max: 2,
+    max: 3,
   },
   domain: {
     type: String,
@@ -47,9 +51,15 @@ const userSchema = new mongoose.Schema({
   linkedinLink: {
     type: String,
   },
+  // Key-value store of questionId -> answer text captured during registration
+  responses: {
+    type: Map,
+    of: String,
+    default: {},
+  },
   status: {
     type: String,
-    enum: ["active", "shortlisted", "rejected", "omitted"],
+    enum: ["active", "shortlisted", "rejected", "holded"],
     default: "active",
   },
   notes: {

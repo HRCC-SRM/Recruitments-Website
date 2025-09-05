@@ -6,9 +6,7 @@ export type SampleApplication = {
   personalEmail: string
   phone: string
   yearOfStudy: string
-  section?: string
   branch: string
-  specialization?: string
   department: string
   domain: string
 }
@@ -22,9 +20,7 @@ export const technicalApplications: SampleApplication[] = [
     personalEmail: "aarav.menon@example.com",
     phone: "9876543210",
     yearOfStudy: "2",
-    section: "A",
     branch: "CSE",
-    specialization: "AI",
     department: "Computer Science and Engineering",
     domain: "technical"
   },
@@ -36,9 +32,7 @@ export const technicalApplications: SampleApplication[] = [
     personalEmail: "diya.sharma@example.com",
     phone: "9876501234",
     yearOfStudy: "1",
-    section: "B",
     branch: "ECE",
-    specialization: "Embedded",
     department: "Electronics and Communication Engineering",
     domain: "technical"
   },
@@ -50,9 +44,7 @@ export const technicalApplications: SampleApplication[] = [
     personalEmail: "rohan.gupta@example.com",
     phone: "9876009876",
     yearOfStudy: "3",
-    section: "C",
     branch: "IT",
-    specialization: "Systems",
     department: "Information Technology",
     domain: "technical"
   }
@@ -67,9 +59,7 @@ export const creativesApplications: SampleApplication[] = [
     personalEmail: "ishita.verma@example.com",
     phone: "9867543210",
     yearOfStudy: "2",
-    section: "A",
     branch: "CSE",
-    specialization: "UX",
     department: "Computer Science and Engineering",
     domain: "creatives"
   },
@@ -81,9 +71,7 @@ export const creativesApplications: SampleApplication[] = [
     personalEmail: "kabir.rao@example.com",
     phone: "9812345678",
     yearOfStudy: "1",
-    section: "B",
     branch: "Mech",
-    specialization: "3D",
     department: "Mechanical Engineering",
     domain: "creatives"
   },
@@ -95,9 +83,7 @@ export const creativesApplications: SampleApplication[] = [
     personalEmail: "maya.nair@example.com",
     phone: "9898989898",
     yearOfStudy: "3",
-    section: "C",
     branch: "ECE",
-    specialization: "Motion",
     department: "Electronics and Communication Engineering",
     domain: "creatives"
   }
@@ -112,7 +98,6 @@ export const corporateApplications: SampleApplication[] = [
     personalEmail: "ritika.agarwal@example.com",
     phone: "9000012345",
     yearOfStudy: "2",
-    section: "A",
     branch: "EEE",
     department: "Electrical and Electronics Engineering",
     domain: "corporate"
@@ -125,7 +110,6 @@ export const corporateApplications: SampleApplication[] = [
     personalEmail: "siddharth.iyer@example.com",
     phone: "9123456780",
     yearOfStudy: "1",
-    section: "B",
     branch: "CSE",
     department: "Computer Science and Engineering",
     domain: "corporate"
@@ -138,7 +122,6 @@ export const corporateApplications: SampleApplication[] = [
     personalEmail: "tanya.kapoor@example.com",
     phone: "9345678901",
     yearOfStudy: "3",
-    section: "C",
     branch: "IT",
     department: "Information Technology",
     domain: "corporate"

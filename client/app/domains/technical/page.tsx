@@ -24,6 +24,7 @@ type Question = {
 import Link from "next/link"
 import { apiClient } from "@/lib/api"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 export default function TechnicalForm() {
   const [currentStep, setCurrentStep] = useState(0)
@@ -87,7 +88,7 @@ export default function TechnicalForm() {
         })
       }
     }
-  }, [formData.yearOfStudy, currentStep])
+  }, [formData.yearOfStudy, currentStep, currentStepConfig.id, currentStepConfig.questions])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -96,6 +97,19 @@ export default function TechnicalForm() {
     
     try {
       // Prepare data for backend API
+      // Build responses map from all non-core fields
+      const responses: Record<string, string> = {}
+      Object.keys(formData).forEach((key) => {
+        if (![
+          'name','email','phone','srmEmail','regNo','branch','yearOfStudy','domain','linkedinLink'
+        ].includes(key)) {
+          const value = formData[key]
+          if (value !== undefined && value !== null && value !== '') {
+            responses[key] = String(value)
+          }
+        }
+      })
+
       const registrationData = {
         name: formData.name as string,
         email: formData.email as string,
@@ -103,9 +117,11 @@ export default function TechnicalForm() {
         srmEmail: formData.srmEmail as string,
         regNo: formData.regNo as string,
         branch: formData.branch as string,
+        department: formData.department as string,
         yearOfStudy: formData.yearOfStudy as number,
         domain: "Technical",
-        linkedinLink: formData.linkedinLink as string || undefined
+        linkedinLink: formData.linkedinLink as string || undefined,
+        responses,
       }
       
       await apiClient.registerUser(registrationData)
@@ -132,20 +148,47 @@ export default function TechnicalForm() {
     }
   }
 
+  // Validate current step before proceeding
+  const validateCurrentStep = () => {
+    const currentStepQuestions = getFilteredQuestions()
+    const requiredQuestions = currentStepQuestions.filter(q => q.required)
+    
+    for (const question of requiredQuestions) {
+      const value = formData[question.id]
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
+        return false
+      }
+    }
+    return true
+  }
+
   const handleNext = () => {
+    if (!validateCurrentStep()) {
+      setError("Please fill in all required fields before proceeding to the next step.")
+      return
+    }
+    
     if (currentStep < technicalFormConfig.steps.length - 1) {
       setCurrentStep(currentStep + 1)
+      setError("") // Clear any previous errors
     }
   }
 
   const handlePrevious = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1)
+      setError("") // Clear any previous errors
     }
   }
 
   const handleStepClick = (stepIndex: number) => {
-    setCurrentStep(stepIndex)
+    // Only allow going to previous steps or current step
+    if (stepIndex <= currentStep) {
+      setCurrentStep(stepIndex)
+      setError("") // Clear any previous errors
+    } else {
+      setError("Please complete the current step before proceeding to the next step.")
+    }
   }
 
   const renderQuestion = (question: Question) => {
@@ -177,7 +220,7 @@ export default function TechnicalForm() {
             <option value="" disabled>
               Select an option
             </option>
-            {(question.options || []).map((opt: any) => (
+            {(question.options || []).map((opt: { label: string; value: string | number }) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -198,7 +241,7 @@ export default function TechnicalForm() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <img src="/Logo Light Narrow.svg" alt="HackerRank" className="h-8" />
+              <Image src="/Logo Light Narrow.svg" alt="HackerRank" width={32} height={32} className="h-8" />
             </div>
             <div className="flex items-center space-x-4">
               <Link href="/">
@@ -263,7 +306,7 @@ export default function TechnicalForm() {
                       <div className="text-center mb-8">
                         <h3 className="text-xl font-semibold mb-4">Review Your Application</h3>
                         <p className="text-muted-foreground">
-                          Please review all the information you've provided before submitting your application.
+                          Please review all the information you&apos;ve provided before submitting your application.
                         </p>
                       </div>
                       

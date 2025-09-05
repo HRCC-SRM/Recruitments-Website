@@ -9,10 +9,17 @@ import { ProgressSidebar } from "@/components/ui/progress-sidebar"
 import { corporateFormConfig } from "@/lib/form-configs"
 import { Building2, ArrowLeft, LogOut, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react"
 import Link from "next/link"
+import { apiClient } from "@/lib/api"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 export default function CorporateForm() {
   const [currentStep, setCurrentStep] = useState(0)
   const [formData, setFormData] = useState<Record<string, string>>({})
+  const [error, setError] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const router = useRouter()
 
   const steps = corporateFormConfig.steps.map((step, index) => ({
     id: step.id,
@@ -23,12 +30,43 @@ export default function CorporateForm() {
 
   const currentStepConfig = corporateFormConfig.steps[currentStep]
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
+    setError("")
 
-    // Here you would typically send the data to your backend
-    // After successful submission, redirect to thank you page
-    window.location.href = "/thank-you"
+    try {
+      const responses: Record<string, string> = {}
+      Object.keys(formData).forEach((key) => {
+        if (![
+          'name','personalEmail','phone','srmEmail','registrationNumber','branch','yearOfStudy'
+        ].includes(key)) {
+          const val = formData[key]
+          if (val !== undefined && val !== null && val !== '') responses[key] = String(val)
+        }
+      })
+
+      await apiClient.registerUser({
+        name: formData.name as string,
+        email: formData.personalEmail as string,
+        phone: formData.phone as string,
+        srmEmail: formData.srmEmail as string,
+        regNo: formData.registrationNumber as string,
+        branch: formData.branch as string,
+        department: formData.department as string,
+        yearOfStudy: Number(formData.yearOfStudy),
+        domain: "Corporates",
+        linkedinLink: formData.linkedinLink as string || undefined,
+        responses,
+      })
+
+      router.push('/thank-you')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Submission failed';
+      setError(errorMessage)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -38,23 +76,50 @@ export default function CorporateForm() {
     })
   }
 
+  // Validate current step before proceeding
+  const validateCurrentStep = () => {
+    const currentStepQuestions = currentStepConfig.questions
+    const requiredQuestions = currentStepQuestions.filter(q => q.required)
+    
+    for (const question of requiredQuestions) {
+      const value = formData[question.id]
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
+        return false
+      }
+    }
+    return true
+  }
+
   const handleNext = () => {
+    if (!validateCurrentStep()) {
+      setError("Please fill in all required fields before proceeding to the next step.")
+      return
+    }
+    
     if (currentStep < corporateFormConfig.steps.length - 1) {
       setCurrentStep(currentStep + 1)
+      setError("") // Clear any previous errors
     }
   }
 
   const handlePrevious = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1)
+      setError("") // Clear any previous errors
     }
   }
 
   const handleStepClick = (stepIndex: number) => {
-    setCurrentStep(stepIndex)
+    // Only allow going to previous steps or current step
+    if (stepIndex <= currentStep) {
+      setCurrentStep(stepIndex)
+      setError("") // Clear any previous errors
+    } else {
+      setError("Please complete the current step before proceeding to the next step.")
+    }
   }
 
-  const renderQuestion = (question: any) => {
+  const renderQuestion = (question: { id: string; label: string; type: string; placeholder?: string; required: boolean; inputType?: string; pattern?: string; options?: Array<{ label: string; value: string | number }> }) => {
     const commonProps = {
       id: question.id,
       name: question.id,
@@ -83,7 +148,7 @@ export default function CorporateForm() {
             <option value="" disabled>
               Select an option
             </option>
-            {(question.options || []).map((opt: any) => (
+            {(question.options || []).map((opt: { label: string; value: string | number }) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -104,7 +169,7 @@ export default function CorporateForm() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <img src="/Logo Light Narrow.svg" alt="HackerRank" className="h-8" />
+              <Image src="/Logo Light Narrow.svg" alt="HackerRank" width={32} height={32} className="h-8" />
             </div>
             <div className="flex items-center space-x-4">
               <Link href="/">
@@ -148,9 +213,21 @@ export default function CorporateForm() {
                 <p className="text-muted-foreground mt-2">{currentStepConfig.title}</p>
               </div>
 
+              {error && (
+                <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md mb-4">{error}</div>
+              )}
               <form onSubmit={handleSubmit} className="space-y-6">
                 {currentStepConfig.id === "your-details" ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Inject Name and SRM Email fields required by backend */}
+                    <div>
+                      <Label htmlFor="name">Full Name *</Label>
+                      <Input id="name" name="name" value={formData.name || ''} onChange={handleChange} required className="mt-1" placeholder="Enter your full name" />
+                    </div>
+                    <div>
+                      <Label htmlFor="srmEmail">SRMIST Email *</Label>
+                      <Input id="srmEmail" name="srmEmail" value={formData.srmEmail || ''} onChange={handleChange} required className="mt-1" placeholder="your.name@srmist.edu.in" />
+                    </div>
                     {currentStepConfig.questions.map((question) => (
                       <div key={question.id}>
                         <Label htmlFor={question.id}>
@@ -195,8 +272,8 @@ export default function CorporateForm() {
                         <ChevronRight className="h-4 w-4 ml-2" />
                       </Button>
                     ) : (
-                      <Button type="submit" className="bg-green-600 hover:bg-green-700 px-8 py-3 text-lg w-full sm:w-auto">
-                        Submit Application
+                      <Button type="submit" className="bg-green-600 hover:bg-green-700 px-8 py-3 text-lg w-full sm:w-auto" disabled={isSubmitting}>
+                        {isSubmitting ? 'Submitting...' : 'Submit Application'}
                       </Button>
                     )}
                   </div>

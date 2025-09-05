@@ -87,6 +87,13 @@ export const technicalFormConfig: FormConfig = {
           ]
         },
         {
+          id: "department",
+          type: "input",
+          label: "Department",
+          placeholder: "e.g., Computer Science and Engineering",
+          required: true
+        },
+        {
           id: "linkedinLink",
           type: "input",
           label: "LinkedIn Profile (Optional)",
@@ -211,24 +218,10 @@ export const creativesFormConfig = {
           ]
         },
         {
-          id: "section",
-          type: "input",
-          label: "Section",
-          placeholder: "e.g., A, B, C...",
-          required: true
-        },
-        {
           id: "branch",
           type: "input",
           label: "Branch",
           placeholder: "e.g., CSE, ECE, MECH...",
-          required: true
-        },
-        {
-          id: "specialization",
-          type: "input",
-          label: "Specialization",
-          placeholder: "e.g., AI, ML, DS, Cyber, etc.",
           required: true
         },
         {
@@ -237,6 +230,14 @@ export const creativesFormConfig = {
           label: "Department",
           placeholder: "e.g., Computer Science and Engineering",
           required: true
+        },
+        {
+          id: "linkedinLink",
+          type: "input",
+          label: "LinkedIn Profile (Optional)",
+          placeholder: "https://linkedin.com/in/yourprofile",
+          required: false,
+          inputType: "url"
         }
       ]
     },
@@ -397,24 +398,10 @@ export const corporateFormConfig = {
           ]
         },
         {
-          id: "section",
-          type: "input",
-          label: "Section",
-          placeholder: "e.g., A, B, C...",
-          required: true
-        },
-        {
           id: "branch",
           type: "input",
           label: "Branch",
           placeholder: "e.g., CSE, ECE, MECH...",
-          required: true
-        },
-        {
-          id: "specialization",
-          type: "input",
-          label: "Specialization",
-          placeholder: "e.g., AI, ML, DS, Cyber, etc.",
           required: true
         },
         {
@@ -423,6 +410,14 @@ export const corporateFormConfig = {
           label: "Department",
           placeholder: "e.g., Computer Science and Engineering",
           required: true
+        },
+        {
+          id: "linkedinLink",
+          type: "input",
+          label: "LinkedIn Profile (Optional)",
+          placeholder: "https://linkedin.com/in/yourprofile",
+          required: false,
+          inputType: "url"
         }
       ]
     },

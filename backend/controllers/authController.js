@@ -9,13 +9,15 @@ export const register = async (req, res) => {
       srmEmail,
       regNo,
       branch,
+      department,
       yearOfStudy,
       domain,
       linkedinLink,
+      responses,
     } = req.body || {};
 
     // Basic validation aligned with the User model
-    if (!name || !email || !phone || !srmEmail || !regNo || !branch || !yearOfStudy || !domain) {
+    if (!name || !email || !phone || !srmEmail || !regNo || !branch || !department || !yearOfStudy || !domain) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -27,9 +29,12 @@ export const register = async (req, res) => {
       srmEmail,
       regNo,
       branch,
+      department,
       yearOfStudy,
       domain,
       linkedinLink,
+      // Persist responses if provided as an object
+      ...(responses && typeof responses === 'object' ? { responses } : {}),
     });
 
     return res.status(201).json({
@@ -42,10 +47,12 @@ export const register = async (req, res) => {
         srmEmail: user.srmEmail,
         regNo: user.regNo,
         branch: user.branch,
+        department: user.department,
         yearOfStudy: user.yearOfStudy,
         domain: user.domain,
         linkedinLink: user.linkedinLink,
       },
+      ...(responses ? { responses } : {}),
     });
   } catch (err) {
     // Handle duplicate key errors and validation errors

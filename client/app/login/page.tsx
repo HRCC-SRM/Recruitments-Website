@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, EyeOff } from "lucide-react"
-import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -31,8 +31,9 @@ export default function LoginPage() {
       await login(formData.username, formData.password)
       // Redirect to appropriate dashboard based on role
       router.push('/dashboard')
-    } catch (error: any) {
-      setError(error.message || 'Login failed')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      setError(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -53,7 +54,7 @@ export default function LoginPage() {
       <div className="container mx-auto px-4">
         <div className="max-w-md mx-auto">
           <div className="text-center mb-8">
-            <img src="/Logo Light Wide.png" alt="HackerRank" className="mx-auto mb-6" />
+            <Image src="/Logo Light Wide.png" alt="HackerRank" width={200} height={60} className="mx-auto mb-6" />
           </div>
           <Card>
             <CardHeader className="text-center">
@@ -106,24 +107,15 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
+                {/* <div className="flex items-center justify-between">
                   <Link href="/forgot-password" className="text-primary hover:text-primary/80 text-sm">
                     Forgot password?
                   </Link>
-                </div>
+                </div> */}
 
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? "Signing In..." : "Sign In"}
                 </Button>
-
-                <div className="text-center">
-                  <p className="text-muted-foreground text-sm">
-                    For user registration, visit{" "}
-                    <Link href="/register" className="text-primary hover:text-primary/80 font-medium">
-                      Registration Page
-                    </Link>
-                  </p>
-                </div>
               </form>
             </CardContent>
           </Card>

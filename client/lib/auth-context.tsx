@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { apiClient, Admin, User } from './api';
+import { apiClient, Admin } from './api';
 
 interface AuthContextType {
   admin: Admin | null;
@@ -45,8 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       const response = await apiClient.login({ username, password });
       setAdmin(response.admin);
-    } catch (error: any) {
-      setError(error.message || 'Login failed');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      setError(errorMessage);
       throw error;
     } finally {
       setIsLoading(false);

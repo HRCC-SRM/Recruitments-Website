@@ -4,10 +4,10 @@ import { creativesResponses } from "@/lib/sample-responses"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
-type Params = { params: { id: string } }
+type Params = { params: Promise<{ id: string }> }
 
-export default function CreativesApplicantResponses({ params }: Params) {
-  const { id } = params
+export default async function CreativesApplicantResponses({ params }: Params) {
+  const { id } = await params
   const app = creativesApplications.find((a) => a.id === id)
   const responses = creativesResponses[id] || {}
 
@@ -41,7 +41,7 @@ export default function CreativesApplicantResponses({ params }: Params) {
           <div key={step.id} className="space-y-4">
             <h2 className="text-lg font-semibold">{step.title}</h2>
             <div className="space-y-3">
-              {step.questions.map((q: any) => (
+              {step.questions.map((q: { id: string; label: string; type: string; options?: Array<{ label: string; value: string | number }> }) => (
                 <div key={q.id} className="border border-border rounded-md p-4">
                   <div className="text-sm text-muted-foreground">{q.label}</div>
                   <div className="mt-1 whitespace-pre-wrap">{responses[q.id] ?? "-"}</div>

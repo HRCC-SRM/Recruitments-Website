@@ -11,7 +11,7 @@ export function useStableEffect(
   const { skipFirst = false, throttleMs = 0 } = options;
   const hasRun = useRef(false);
   const lastRun = useRef(0);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     // Skip first run if requested
@@ -49,7 +49,7 @@ export function useStableEffect(
     effect();
     lastRun.current = Date.now();
     hasRun.current = true;
-  }, deps);
+  }, [...deps, effect, skipFirst, throttleMs]);
 
   // Cleanup on unmount
   useEffect(() => {

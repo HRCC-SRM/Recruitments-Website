@@ -6,7 +6,7 @@ export function useThrottledEffect(
   delay: number = 1000
 ) {
   const lastRun = useRef<number>(0);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     const now = Date.now();
@@ -35,6 +35,6 @@ export function useThrottledEffect(
         clearTimeout(timeoutRef.current);
       }
     };
-  }, deps);
+  }, [...deps, effect, delay]);
 }
 

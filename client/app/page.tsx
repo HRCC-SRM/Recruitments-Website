@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Code, Palette, Building2 } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function Home() {
   return (
@@ -10,7 +11,7 @@ export default function Home() {
       <header className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <img src="/Logo Light Narrow.svg" alt="HackerRank" className="h-8" />
+            <Image src="/Logo Light Narrow.svg" alt="HackerRank" width={32} height={32} className="h-8" />
           </div>
           <div className="flex items-center space-x-4">
             <Link href="/contact">
@@ -26,7 +27,7 @@ export default function Home() {
       <main className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <div className="mb-8">
-            <img src="/Logo Light Wide.png" alt="HackerRank" className="h-16 mx-auto mb-6" />
+            <Image src="/Logo Light Wide.png" alt="HackerRank" width={200} height={80} className="h-16 mx-auto mb-6" />
           </div>
           <h1 className="text-5xl font-bold text-foreground mb-6">
             <span className="text-primary">Campus Crew</span>

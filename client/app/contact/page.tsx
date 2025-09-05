@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Mail, Phone, MapPin, Send, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function ContactSupport() {
   const handleSubmit = (e: React.FormEvent) => {
@@ -21,7 +22,7 @@ export default function ContactSupport() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <img src="/Logo Light Narrow.svg" alt="HackerRank" className="h-8" />
+              <Image src="/Logo Light Narrow.svg" alt="HackerRank" width={32} height={32} className="h-8" />
               <span className="text-xl font-bold text-foreground">Campus Crew</span>
             </div>
             <Link href="/">
@@ -41,7 +42,7 @@ export default function ContactSupport() {
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold text-foreground mb-4">Contact Support</h1>
             <p className="text-xl text-muted-foreground">
-              Need help? We're here to assist you with any questions or concerns.
+              Need help? We&apos;re here to assist you with any questions or concerns.
             </p>
           </div>
 
@@ -139,7 +140,7 @@ export default function ContactSupport() {
                 <h2 className="text-2xl font-semibold text-foreground mb-6">Get in Touch</h2>
                 <p className="text-muted-foreground mb-6">
                   Have questions about the recruitment process, need technical support, or want to provide feedback? 
-                  We're here to help! Reach out to us through any of the channels below.
+                  We&apos;re here to help! Reach out to us through any of the channels below.
                 </p>
               </div>
 
@@ -205,7 +206,7 @@ export default function ContactSupport() {
                       How long does the application review take?
                     </summary>
                     <p className="text-sm text-muted-foreground mt-2 pl-4">
-                      Applications are typically reviewed within 3-5 business days. You'll receive an email notification once the review is complete.
+                      Applications are typically reviewed within 3-5 business days. You&apos;ll receive an email notification once the review is complete.
                     </p>
                   </details>
                   
@@ -220,10 +221,10 @@ export default function ContactSupport() {
                   
                   <details className="group">
                     <summary className="cursor-pointer text-sm font-medium text-foreground hover:text-primary">
-                      What if I don't receive confirmation emails?
+                      What if I don&apos;t receive confirmation emails?
                     </summary>
                     <p className="text-sm text-muted-foreground mt-2 pl-4">
-                      Check your spam folder first. If you still don't receive emails, contact us and we'll help you troubleshoot the issue.
+                      Check your spam folder first. If you still don&apos;t receive emails, contact us and we&apos;ll help you troubleshoot the issue.
                     </p>
                   </details>
                 </div>

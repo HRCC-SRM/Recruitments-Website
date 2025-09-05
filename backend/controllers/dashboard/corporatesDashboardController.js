@@ -1,4 +1,7 @@
 import User from "../../models/User.js";
+import { sendEmail } from "../../utils/emailSender.js";
+import fs from "fs";
+import path from "path";
 
 // Get all corporate domain users
 export const getCorporateUsers = async (req, res) => {
@@ -86,7 +89,7 @@ export const updateUserStatus = async (req, res) => {
       return res.status(400).json({ message: "Status is required" });
     }
 
-    const validStatuses = ["active", "shortlisted", "rejected", "omitted"];
+    const validStatuses = ["active", "shortlisted", "rejected", "holded"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ 
         message: "Invalid status. Must be: active, shortlisted, rejected, or omitted" 
@@ -190,7 +193,7 @@ export const getCorporateStats = async (req, res) => {
     const activeUsers = await User.countDocuments({ domain: "Corporates", status: "active" });
     const shortlistedUsers = await User.countDocuments({ domain: "Corporates", status: "shortlisted" });
     const rejectedUsers = await User.countDocuments({ domain: "Corporates", status: "rejected" });
-    const omittedUsers = await User.countDocuments({ domain: "Corporates", status: "omitted" });
+    const omittedUsers = await User.countDocuments({ domain: "Corporates", status: "holded" });
 
     // Get users by year of study
     const year1Users = await User.countDocuments({ domain: "Corporates", yearOfStudy: 1 });
@@ -239,7 +242,7 @@ export const bulkUpdateUserStatus = async (req, res) => {
       return res.status(400).json({ message: "Status is required" });
     }
 
-    const validStatuses = ["active", "shortlisted", "rejected", "omitted"];
+    const validStatuses = ["active", "shortlisted", "rejected", "holded"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ 
         message: "Invalid status. Must be: active, shortlisted, rejected, or omitted" 
@@ -403,6 +406,64 @@ export const sendTaskEmailToShortlisted = async (req, res) => {
   }
 };
 
+// Send shortlisted notification emails
+export const sendShortlistedEmails = async (req, res) => {
+  try {
+    const shortlisted = await User.find({ domain: "Corporates", status: "shortlisted" });
+    if (shortlisted.length === 0) {
+      return res.status(200).json({ message: "No shortlisted corporate users found", sent: 0 });
+    }
+
+    const candidatePaths = [
+      process.env.EMAIL_TEMPLATE_PATH,
+      path.resolve(process.cwd(), "scripts", "email_template.html"),
+      path.resolve(process.cwd(), "..", "scripts", "email_template.html"),
+    ].filter(Boolean);
+    let templateHtml = "";
+    let found = false;
+    for (const p of candidatePaths) {
+      try {
+        templateHtml = fs.readFileSync(p, "utf-8");
+        found = true;
+        break;
+      } catch (_) {}
+    }
+    if (!found) {
+      return res.status(500).json({ message: "Email template not found. Place scripts/email_template.html at repo root or set EMAIL_TEMPLATE_PATH" });
+    }
+
+    const subject = process.env.SHORTLIST_SUBJECT || "HRCC Recruitment Update";
+    let sent = 0;
+    let failed = 0;
+    for (const u of shortlisted) {
+      const toEmail = u.email || u.srmEmail;
+      if (!toEmail) continue;
+      const html = templateHtml
+        .replace(/\{\{name\}\}/g, u.name || "Applicant")
+        .replace(/\{\{regNo\}\}/g, u.regNo || "");
+      try {
+        await sendEmail({
+          toEmail: toEmail,
+          toName: u.name || "Applicant",
+          subject,
+          html,
+          fromEmail: process.env.GMAIL_USER || process.env.BREVO_FROM_EMAIL,
+          fromName: process.env.BREVO_FROM_NAME || "HRCC Recruitments",
+        });
+        sent += 1;
+      } catch (e) {
+        console.error("Failed to send email to", toEmail, e.message);
+        failed += 1;
+      }
+    }
+
+    res.status(200).json({ message: `Emails sent to ${sent} shortlisted users`, sent, matched: shortlisted.length, failed });
+  } catch (error) {
+    console.error("Send shortlisted emails error:", error);
+    res.status(500).json({ message: "Internal server error", error: error?.message });
+  }
+};
+
 export default {
   getCorporateUsers,
   getCorporateUserById,
@@ -412,4 +473,5 @@ export default {
   bulkUpdateUserStatus,
   getShortlistedUsers,
   sendTaskEmailToShortlisted,
+  sendShortlistedEmails,
 };

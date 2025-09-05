@@ -8,6 +8,7 @@ import {
   bulkUpdateUserStatus,
   getShortlistedUsers,
   sendTaskEmailToShortlisted,
+  sendShortlistedEmails,
 } from "../controllers/dashboard/technicalDasboardController.js";
 import {
   authenticateAdmin,
@@ -52,5 +53,8 @@ router.get("/shortlisted", getShortlistedUsers);
 
 // Send task email to all shortlisted users
 router.post("/tasks/send-to-shortlisted", sendTaskEmailToShortlisted);
+
+// Send shortlisted notification emails (HTML template)
+router.post("/notifications/send-to-shortlisted", sendShortlistedEmails);
 
 export default router;

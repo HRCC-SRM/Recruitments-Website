@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Mail, Clock, Users } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function ThankYouPage() {
   return (
@@ -10,7 +11,7 @@ export default function ThankYouPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <img src="/Logo Light Narrow.svg" alt="HackerRank" className="h-8" />
+              <Image src="/Logo Light Narrow.svg" alt="HackerRank" width={32} height={32} className="h-8" />
               <span className="text-xl font-bold text-foreground">Campus Crew</span>
             </div>
             <Link href="/">
@@ -36,7 +37,7 @@ export default function ThankYouPage() {
           </h1>
           
           <p className="text-xl text-muted-foreground mb-8">
-            Your application has been successfully submitted. We're excited to have you join our team!
+            Your application has been successfully submitted. We&apos;re excited to have you join our team!
           </p>
 
           {/* Next Steps */}
@@ -51,7 +52,7 @@ export default function ThankYouPage() {
                 <div className="text-left">
                   <h3 className="font-semibold text-foreground mb-1">Email Confirmation</h3>
                   <p className="text-muted-foreground">
-                    You'll receive a confirmation email within the next few minutes with details about your application.
+                    You&apos;ll receive a confirmation email within the next few minutes with details about your application.
                   </p>
                 </div>
               </div>
@@ -63,7 +64,7 @@ export default function ThankYouPage() {
                 <div className="text-left">
                   <h3 className="font-semibold text-foreground mb-1">Application Review</h3>
                   <p className="text-muted-foreground">
-                    Our team will review your application within 3-5 business days. We'll contact you with the next steps.
+                    Our team will review your application within 3-5 business days. We&apos;ll contact you with the next steps.
                   </p>
                 </div>
               </div>
@@ -75,7 +76,7 @@ export default function ThankYouPage() {
                 <div className="text-left">
                   <h3 className="font-semibold text-foreground mb-1">Team Assignment</h3>
                   <p className="text-muted-foreground">
-                    Once approved, you'll be assigned to your domain team and receive your first tasks and project details.
+                    Once approved, you&apos;ll be assigned to your domain team and receive your first tasks and project details.
                   </p>
                 </div>
               </div>
@@ -87,7 +88,7 @@ export default function ThankYouPage() {
             <h3 className="font-semibold text-foreground mb-3">Important Information</h3>
             <ul className="text-left text-muted-foreground space-y-2">
               <li>• Keep an eye on your email for updates and communications</li>
-              <li>• Make sure to check your spam folder if you don't receive emails</li>
+              <li>• Make sure to check your spam folder if you don&apos;t receive emails</li>
               <li>• You can update your application anytime by logging back in</li>
               <li>• Follow us on social media for team updates and announcements</li>
             </ul>

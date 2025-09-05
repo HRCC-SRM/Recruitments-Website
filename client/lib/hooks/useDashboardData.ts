@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { apiClient, User } from '../api';
+import { User } from '../api';
 
 interface DashboardDataState {
   applications: User[];
@@ -9,8 +9,8 @@ interface DashboardDataState {
 }
 
 interface UseDashboardDataOptions {
-  fetchFunction: (params: any) => Promise<{ users: User[]; pagination: { totalPages: number } }>;
-  initialParams?: any;
+  fetchFunction: (params: Record<string, unknown>) => Promise<{ users: User[]; pagination: { totalPages: number } }>;
+  initialParams?: Record<string, unknown>;
 }
 
 export function useDashboardData({ fetchFunction, initialParams = {} }: UseDashboardDataOptions) {
@@ -23,9 +23,9 @@ export function useDashboardData({ fetchFunction, initialParams = {} }: UseDashb
 
   const requestInProgress = useRef(false);
   const lastParams = useRef<string>('');
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-  const fetchData = useCallback(async (params: any) => {
+  const fetchData = useCallback(async (params: Record<string, unknown>) => {
     const paramsString = JSON.stringify(params);
     
     // Skip if same params or request in progress
@@ -47,10 +47,11 @@ export function useDashboardData({ fetchFunction, initialParams = {} }: UseDashb
         totalPages: response.pagination.totalPages,
         loading: false,
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch data';
       setState(prev => ({
         ...prev,
-        error: error.message || 'Failed to fetch data',
+        error: errorMessage,
         loading: false,
       }));
     } finally {
@@ -58,7 +59,7 @@ export function useDashboardData({ fetchFunction, initialParams = {} }: UseDashb
     }
   }, [fetchFunction]);
 
-  const debouncedFetch = useCallback((params: any, delay: number = 500) => {
+  const debouncedFetch = useCallback((params: Record<string, unknown>, delay: number = 500) => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }

@@ -18,11 +18,10 @@ export default function TechnicalAdminDashboard() {
   const [applications, setApplications] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+  const [currentPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState("")
   
-  const { admin, logout } = useAuth()
+  const { logout } = useAuth()
   const router = useRouter()
   
   const debouncedQuery = useDebounce(query, 2000)
@@ -38,7 +37,7 @@ export default function TechnicalAdminDashboard() {
   
   const requestInProgress = useRef(false)
   const lastFetchParams = useRef<string>("")
-  const fetchTimeoutRef = useRef<NodeJS.Timeout>()
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const fetchApplications = useCallback(async () => {
     if (requestInProgress.current) return
@@ -64,9 +63,9 @@ export default function TechnicalAdminDashboard() {
       })
       
       setApplications(response.users)
-      setTotalPages(response.pagination.totalPages)
-    } catch (error: any) {
-      setError(error.message || 'Failed to fetch applications')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch applications';
+      setError(errorMessage)
     } finally {
       setLoading(false)
       requestInProgress.current = false
@@ -115,6 +114,33 @@ export default function TechnicalAdminDashboard() {
 
   const [selected, setSelected] = useState<User | null>(null)
   const [isOpen, setIsOpen] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [localStatus, setLocalStatus] = useState<User["status"] | undefined>(undefined)
+
+  // Whenever a new row is selected, reset localStatus
+  useEffect(() => {
+    if (selected) {
+      setLocalStatus(selected.status)
+    }
+  }, [selected])
+
+  const changeStatus = async (newStatus: 'active' | 'shortlisted' | 'rejected' | 'holded' | 'omitted') => {
+    if (!selected) return
+    try {
+      setUpdatingStatus(true)
+      const res = await apiClient.updateTechnicalUserStatus(selected.id, { status: newStatus })
+      // Update local list
+      setApplications((prev) => prev.map((u) => (u.id === selected.id ? { ...u, status: res.user.status } : u)))
+      // Update selected
+      setSelected((prev) => (prev ? { ...prev, status: res.user.status } : prev))
+      setLocalStatus(res.user.status)
+    } catch (e) {
+      console.error(e)
+      alert("Failed to update status")
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
 
   const exportCsv = () => {
     const headers = [
@@ -132,7 +158,7 @@ export default function TechnicalAdminDashboard() {
     const rows = applications.map((a) =>
       headers
         .map((h) => {
-          const value = (a as any)[h] ?? ""
+          const value = (a as unknown as Record<string, unknown>)[h] ?? ""
           const str = String(value).replaceAll('"', '""')
           return `"${str}"`
         })
@@ -158,8 +184,7 @@ export default function TechnicalAdminDashboard() {
           <div className="hidden lg:block absolute top-0 bottom-0 left-64 w-px bg-border" aria-hidden />
           <AdminSidebar
             items={[
-              { id: "all", label: "All Applications", onClick: () => {} , isActive: true},
-              { id: "settings", label: "Settings", onClick: () => {} }
+              { id: "all", label: "All Applications", onClick: () => {} , isActive: true}
             ]}
           />
           <div className="flex-1">
@@ -185,9 +210,33 @@ export default function TechnicalAdminDashboard() {
                     <option value="active">Active</option>
                     <option value="shortlisted">Shortlisted</option>
                     <option value="rejected">Rejected</option>
-                    <option value="omitted">Omitted</option>
+                    <option value="holded">Holded</option>
                   </select>
                   <Button onClick={exportCsv} className="md:ml-2">Export CSV</Button>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5100/api'
+                        const token = apiClient.getToken() || (typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null)
+                        const res = await fetch(`${base}/technical-dashboard/notifications/send-to-shortlisted`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                          },
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data?.message || 'Failed to send emails');
+                        alert(data.message || 'Emails sent');
+                      } catch (e: unknown) {
+                        const errorMessage = e instanceof Error ? e.message : 'Failed to send emails';
+                        alert(errorMessage);
+                      }
+                    }}
+                  >
+                    Email shortlisted
+                  </Button>
                 </div>
               </div>
 
@@ -289,20 +338,42 @@ export default function TechnicalAdminDashboard() {
                           <div className="text-muted-foreground">Domain</div>
                           <div>{selected.domain}</div>
                         </div>
-                        <div>
-                          <div className="text-muted-foreground">Status</div>
-                          <div>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              selected.status === 'shortlisted' ? 'bg-green-100 text-green-800' :
-                              selected.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                              selected.status === 'omitted' ? 'bg-gray-100 text-gray-800' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
-                              {selected.status || 'active'}
-                            </span>
-                          </div>
+                      </div>
+                      
+                      {/* Status Section - Separate from grid */}
+                      <div className="pt-4">
+                        <div className="text-sm text-muted-foreground mb-2">Status</div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            (localStatus || 'active') === 'shortlisted' ? 'bg-green-100 text-green-800' :
+                            (localStatus || 'active') === 'rejected' ? 'bg-red-100 text-red-800' :
+                            (localStatus || 'active') === 'holded' ? 'bg-gray-100 text-gray-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {localStatus || 'active'}
+                          </span>
+                          <select
+                            value={localStatus || 'active'}
+                            onChange={(e) => setLocalStatus(e.target.value as 'active' | 'shortlisted' | 'rejected' | 'holded' | 'omitted')}
+                            className="px-2 py-1 border border-input bg-background rounded text-xs"
+                          >
+                            <option value="active">Active</option>
+                            <option value="shortlisted">Shortlisted</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="holded">Holded</option>
+                          </select>
+                          <Button 
+                            size="sm" 
+                            variant="default"
+                            className="ml-2 bg-blue-900 hover:bg-blue-700 text-white"
+                            disabled={updatingStatus || localStatus === selected.status} 
+                            onClick={() => changeStatus((localStatus || 'active') as 'active' | 'shortlisted' | 'rejected' | 'holded' | 'omitted')}
+                          >
+                            {updatingStatus ? 'Saving...' : 'Update'}
+                          </Button>
                         </div>
                       </div>
+                      {/* Registration answers moved to full responses page */}
                       {selected.linkedinLink && (
                         <div>
                           <div className="text-sm text-muted-foreground">LinkedIn</div>
@@ -311,7 +382,7 @@ export default function TechnicalAdminDashboard() {
                           </a>
                         </div>
                       )}
-                      <Link className="inline-flex text-sm text-primary underline" href={`/dashboard/technical/${selected.id}`}>View full responses →</Link>
+                      <Link className="inline-flex text-sm text-primary underline" href={`/dashboard/technical/${selected.id}`}>Open full responses →</Link>
                     </div>
                   )}
                 </SheetContent>

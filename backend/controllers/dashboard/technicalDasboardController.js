@@ -1,4 +1,7 @@
 import User from "../../models/User.js";
+import { sendEmail } from "../../utils/emailSender.js";
+import fs from "fs";
+import path from "path";
 
 // Get all technical domain users
 export const getTechnicalUsers = async (req, res) => {
@@ -86,7 +89,7 @@ export const updateUserStatus = async (req, res) => {
       return res.status(400).json({ message: "Status is required" });
     }
 
-    const validStatuses = ["active", "shortlisted", "rejected", "omitted"];
+    const validStatuses = ["active", "shortlisted", "rejected", "holded"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ 
         message: "Invalid status. Must be: active, shortlisted, rejected, or omitted" 
@@ -190,7 +193,7 @@ export const getTechnicalStats = async (req, res) => {
     const activeUsers = await User.countDocuments({ domain: "Technical", status: "active" });
     const shortlistedUsers = await User.countDocuments({ domain: "Technical", status: "shortlisted" });
     const rejectedUsers = await User.countDocuments({ domain: "Technical", status: "rejected" });
-    const omittedUsers = await User.countDocuments({ domain: "Technical", status: "omitted" });
+    const omittedUsers = await User.countDocuments({ domain: "Technical", status: "holded" });
 
     // Get users by year of study
     const year1Users = await User.countDocuments({ domain: "Technical", yearOfStudy: 1 });
@@ -239,7 +242,7 @@ export const bulkUpdateUserStatus = async (req, res) => {
       return res.status(400).json({ message: "Status is required" });
     }
 
-    const validStatuses = ["active", "shortlisted", "rejected", "omitted"];
+    const validStatuses = ["active", "shortlisted", "rejected", "holded"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ 
         message: "Invalid status. Must be: active, shortlisted, rejected, or omitted" 
@@ -403,6 +406,52 @@ export const sendTaskEmailToShortlisted = async (req, res) => {
   }
 };
 
+// Send shortlisted notification emails
+export const sendShortlistedEmails = async (req, res) => {
+  try {
+    const shortlisted = await User.find({ domain: "Technical", status: "shortlisted" });
+    if (shortlisted.length === 0) {
+      return res.status(200).json({ message: "No shortlisted technical users found", sent: 0 });
+    }
+
+    const templatePath = path.resolve(process.cwd(), "scripts", "email_template.html");
+    let templateHtml = "";
+    try {
+      templateHtml = fs.readFileSync(templatePath, "utf-8");
+    } catch (e) {
+      return res.status(500).json({ message: "Email template not found. Check scripts/email_template.html" });
+    }
+
+    const subject = process.env.SHORTLIST_SUBJECT || "HRCC Recruitment Update";
+    let sent = 0;
+    for (const u of shortlisted) {
+      const toEmail = u.email || u.srmEmail;
+      if (!toEmail) continue;
+      const html = templateHtml
+        .replace(/\{\{name\}\}/g, u.name || "Applicant")
+        .replace(/\{\{regNo\}\}/g, u.regNo || "");
+      try {
+        await sendEmail({
+          toEmail: toEmail,
+          toName: u.name || "Applicant",
+          subject,
+          html,
+          fromEmail: process.env.GMAIL_USER || process.env.BREVO_FROM_EMAIL,
+          fromName: process.env.BREVO_FROM_NAME || "HRCC Recruitments",
+        });
+        sent += 1;
+      } catch (e) {
+        console.error("Failed to send email to", toEmail, e.message);
+      }
+    }
+
+    res.status(200).json({ message: `Emails sent to ${sent} shortlisted users`, sent });
+  } catch (error) {
+    console.error("Send shortlisted emails error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 export default {
   getTechnicalUsers,
   getTechnicalUserById,
@@ -412,4 +461,5 @@ export default {
   bulkUpdateUserStatus,
   getShortlistedUsers,
   sendTaskEmailToShortlisted,
+  sendShortlistedEmails,
 };
