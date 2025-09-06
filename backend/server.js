@@ -7,6 +7,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import technicalDashboardRoutes from './routes/technicalDashboardRoutes.js';
 import creativeDashboardRoutes from './routes/creativeDashboardRoutes.js';
 import corporateDashboardRoutes from './routes/corporateDashboardRoutes.js';
+import { initializeAdmins } from './controllers/adminController.js';
 
 const app = express();
 const PORT = process.env.PORT || 5100;
@@ -19,7 +20,21 @@ app.use(cors({
 app.use(express.json());
 
 
-db();
+// Initialize database and then admins
+const startServer = async () => {
+  try {
+    await db();
+    await initializeAdmins();
+    
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
 // Sample route
 app.get('/', (req, res) => {
     res.send('Backend is working');
@@ -32,8 +47,7 @@ app.use('/api/technical-dashboard', technicalDashboardRoutes);
 app.use('/api/creative-dashboard', creativeDashboardRoutes);
 app.use('/api/corporate-dashboard', corporateDashboardRoutes);
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+// Start the server
+startServer();
 
 

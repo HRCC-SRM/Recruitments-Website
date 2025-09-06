@@ -76,8 +76,8 @@ const initializeAdmins = async () => {
   }
 };
 
-// Initialize admins on startup
-initializeAdmins();
+// Export the function to be called after database connection
+export { initializeAdmins };
 
 // Generate JWT token
 const generateToken = (adminId, role, domain = null) => {

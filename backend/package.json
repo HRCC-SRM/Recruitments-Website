@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "setup": "node setup-env.js",
+    "test-connection": "node test-connection.js",
+    "wait-for-db": "node wait-for-connection.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
