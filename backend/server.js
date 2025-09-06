@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5100;
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  origin: ['http://localhost:3000', 'http://localhost:3001','https://hrcc-recruitments.vercel.app/','http://hrcc-recruitments.vercel.app'],
   credentials: true
 }));
 app.use(express.json());
